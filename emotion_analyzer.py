@@ -1,10 +1,13 @@
 import os
 import re
 import json
+import logging
 import tempfile
 from pathlib import Path
 from faster_whisper import WhisperModel
 from config import LLM_MODEL, OPENCODE_ZEN_API_KEY, OPENCODE_ZEN_BASE_URL
+
+logger = logging.getLogger("sagarwave.emotion")
 
 MOOD_DESCRIPTIONS = {
     "breaking": "Urgent breaking news — dramatic, fast-paced, high-contrast visuals, red highlights, urgent tone",
@@ -47,7 +50,8 @@ def transcribe_audio(audio_path: str) -> str:
         model = _get_whisper()
         segments, _ = model.transcribe(audio_path, beam_size=1, language=None)
         return " ".join(seg.text for seg in segments)
-    except Exception:
+    except Exception as e:
+        logger.warning("Transcription failed: %s", e)
         return ""
 
 
@@ -82,8 +86,8 @@ Respond with ONLY valid JSON:
             if mood not in MOOD_DESCRIPTIONS:
                 mood = "informational"
             return {"mood": mood, "confidence": confidence, "reason": result.get("reason", "")}
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("LLM mood analysis failed: %s", e)
 
     return _fallback_mood(text_to_analyze)
 
@@ -161,8 +165,8 @@ Respond with ONLY valid JSON:
                 "summary": result.get("summary", ""),
                 "full_transcript": transcript,
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("LLM topic extraction failed: %s", e)
 
     return {"topic": "general news", "language": "English", "summary": "", "full_transcript": transcript}
 

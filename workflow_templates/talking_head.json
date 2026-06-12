@@ -1,0 +1,40 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "anchor.png"
+    }
+  },
+  "2": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "voice.wav"
+    }
+  },
+  "3": {
+    "class_type": "LivePortrait",
+    "inputs": {
+      "image": ["1", 0],
+      "audio": ["2", 0],
+      "face_scale": 1.0,
+      "face_offset_x": 0,
+      "face_offset_y": 0
+    }
+  },
+  "4": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["3", 0],
+      "frame_rate": 30,
+      "loop_count": 1,
+      "filename_prefix": "sagarwave_avatar"
+    }
+  },
+  "5": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["4", 0],
+      "filename_prefix": "sagarwave_avatar_final"
+    }
+  }
+}

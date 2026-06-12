@@ -3,9 +3,12 @@ import json
 import asyncio
 import time
 import uuid
+import logging
 from pathlib import Path
 from typing import Optional
 import httpx
+
+logger = logging.getLogger("sagarwave.comfy")
 
 
 class ComfyUIAutomator:
@@ -23,7 +26,8 @@ class ComfyUIAutomator:
         try:
             r = httpx.get(f"{self.base_url}/system_stats", timeout=5)
             return r.status_code == 200
-        except Exception:
+        except Exception as e:
+            logger.debug("Health check failed: %s", e)
             return False
 
     def get_system_stats(self) -> dict:
@@ -145,8 +149,8 @@ class ComfyUIAutomator:
                 history = self.get_history(prompt_id)
                 if prompt_id in history:
                     return history[prompt_id]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Poll attempt failed: %s", e)
             time.sleep(poll_interval)
         raise TimeoutError(f"Prompt {prompt_id} did not complete")
 
@@ -222,7 +226,8 @@ class ComfyUIAutomator:
             r = httpx.get(f"{self.base_url}/folder_paths", timeout=10)
             r.raise_for_status()
             return list(r.json().keys())
-        except Exception:
+        except Exception as e:
+            logger.warning("Could not fetch model folders, using defaults: %s", e)
             return ["checkpoints", "loras", "vae", "controlnet",
                     "embeddings", "clip", "upscale_models", "ipadapter"]
 
@@ -239,7 +244,8 @@ class ComfyUIAutomator:
                     if key in models:
                         return models[key]
             return []
-        except Exception:
+        except Exception as e:
+            logger.debug("Could not list models in %s: %s", folder, e)
             return []
 
     def get_all_models(self) -> dict:
@@ -250,8 +256,8 @@ class ComfyUIAutomator:
                 models = self.get_available_models(folder)
                 if models:
                     result[folder] = models
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Could not list models in %s: %s", folder, e)
         return result
 
     # ─── Model Download ─────────────────────────────────

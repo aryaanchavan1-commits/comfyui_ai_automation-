@@ -2,12 +2,15 @@ import os
 import json
 import time
 import math
+import logging
 from pathlib import Path
 from typing import Optional, Callable
 from config import OUTPUT_DIR, WORKFLOW_DIR, MOOD_THEMES, DEFAULT_MOOD
 from comfyui_automator import ComfyUIAutomator
 from agent_core import AgentBrain
 from emotion_analyzer import extract_topic_from_audio, detect_mood
+
+logger = logging.getLogger("sagarwave.pipeline")
 
 
 class PipelineManager:
@@ -109,6 +112,7 @@ class PipelineManager:
                          f"Done! Output: {final}")
 
         except Exception as e:
+            logger.error("Pipeline failed: %s", e)
             self.pipeline_state["status"] = "failed"
             self.pipeline_state["error"] = str(e)
             self._report(progress_callback, 0, 0, f"Error: {e}")
@@ -171,8 +175,8 @@ class PipelineManager:
             for f in chunk_files:
                 try:
                     os.remove(f)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Could not remove temp chunk %s: %s", f, e)
             return out
 
         except Exception as e:
@@ -250,6 +254,7 @@ class PipelineManager:
                         f.write(data)
                     visuals.append(str(save_path))
             except Exception as e:
+                logger.warning("Visual %d generation failed: %s", i, e)
                 if progress_cb:
                     progress_cb({"type": "error",
                                  "text": f"Visual {i+1} failed: {e}"})
@@ -294,6 +299,7 @@ class PipelineManager:
                     f.write(data)
                 return str(save_path)
         except Exception as e:
+            logger.warning("LivePortrait failed: %s, using static fallback", e)
             if progress_cb:
                 progress_cb({"type": "error",
                              "text": f"LivePortrait failed ({e}), using static image as fallback"})
@@ -370,8 +376,8 @@ class PipelineManager:
                 if i > 0:
                     dark = dark.with_crossfadein(crossfade_dur)
                 background_layers.append(dark)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Skipped visual %d: %s", i, e)
 
         if not background_layers:
             bg = ColorClip(size=(res_w, res_h), color=(10, 20, 40))
@@ -663,6 +669,7 @@ class PipelineManager:
             self._report(progress_callback, 4, 4, f"Done! Output: {output}")
 
         except Exception as e:
+            logger.error("I2V pipeline failed: %s", e)
             self.pipeline_state["status"] = "failed"
             self.pipeline_state["error"] = str(e)
             self._report(progress_callback, 0, 0, f"Error: {e}")
@@ -739,8 +746,8 @@ class PipelineManager:
                         with open(bg_img, "wb") as f:
                             f.write(data2)
                         news_images.append(bg_img)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("T2I background generation failed: %s", e)
 
             output = self._compose_video(
                 avatar_video, news_images, audio_path,
@@ -753,6 +760,7 @@ class PipelineManager:
             self._report(progress_callback, 6, 6, f"Done! Output: {output}")
 
         except Exception as e:
+            logger.error("Auto news pipeline failed: %s", e)
             self.pipeline_state["status"] = "failed"
             self.pipeline_state["error"] = str(e)
             self._report(progress_callback, 0, 0, f"Error: {e}")

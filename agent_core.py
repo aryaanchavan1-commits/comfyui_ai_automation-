@@ -2,9 +2,12 @@ import os
 import json
 import re
 import time
+import logging
 from typing import Optional
 from openai import OpenAI
 from config import LLM_MODEL, OPENCODE_ZEN_API_KEY, OPENCODE_ZEN_BASE_URL
+
+logger = logging.getLogger("sagarwave.agent")
 
 SYSTEM_PROMPT = """You are Sagarwave AI, a professional news production agent.
 Your role is to create high-quality broadcast news content.
@@ -111,6 +114,7 @@ class AgentBrain:
             steps[-1] = {"step": "discover_nodes", "status": "done",
                          "count": len(available)}
         except Exception as e:
+            logger.warning("Node discovery failed: %s", e)
             errors.append(f"Node discovery: {e}")
             available = []
 
@@ -124,6 +128,7 @@ class AgentBrain:
             steps[-1] = {"step": "generate_workflow", "status": "done",
                          "model_needed": model_needed}
         except Exception as e:
+            logger.warning("Workflow generation failed: %s", e)
             errors.append(f"Workflow generation: {e}")
             workflow = self._fallback_workflow(user_request)
             model_needed = ""
@@ -145,6 +150,7 @@ class AgentBrain:
                     )
             steps[-1] = {"step": "ensure_models", "status": "done"}
         except Exception as e:
+            logger.warning("Model management failed: %s", e)
             errors.append(f"Model management: {e}")
 
         steps.append({"step": "validate_workflow", "status": "running"})
@@ -156,6 +162,7 @@ class AgentBrain:
                 steps[-1] = {"step": "validate_workflow", "status": "warning",
                              "issues": validation["issues"]}
         except Exception as e:
+            logger.warning("Workflow validation failed: %s", e)
             errors.append(f"Validation: {e}")
 
         return {
@@ -277,6 +284,7 @@ class AgentBrain:
             )
             return result
         except Exception as e:
+            logger.error("LLM query failed: %s", e)
             return {
                 "error": str(e),
                 "task_analysis": f"LLM failed, using fallback: {e}",
@@ -413,6 +421,7 @@ class AgentBrain:
             )
             return json.loads(response.choices[0].message.content)
         except Exception as e:
+            logger.error("LLM workflow generation failed: %s", e)
             return {
                 "workflow": self._fallback_workflow(user_request),
                 "model_needed": "sd_xl_base_1.0.safetensors",

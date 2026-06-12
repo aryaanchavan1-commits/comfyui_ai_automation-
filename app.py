@@ -3,10 +3,13 @@ import sys
 import json
 import time
 import html
+import logging
 from pathlib import Path
 
 import streamlit as st
 from streamlit.components.v1 import html as st_html
+
+logger = logging.getLogger("sagarwave.app")
 
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
@@ -340,8 +343,8 @@ with st.sidebar:
             dev = stats.get("system", {}).get("devices", [{}])[0]
             st.caption(f"🎮 {dev.get('name', 'GPU')} · "
                        f"{dev.get('vram_total', 0)/1e9:.1f}GB VRAM")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Could not fetch GPU stats: %s", e)
     else:
         st.info("Start ComfyUI Desktop then refresh")
 
@@ -404,8 +407,8 @@ def _fast_chat(query: str) -> str:
                 max_tokens=1024,
             )
             return resp.choices[0].message.content
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Fast chat failed: %s", e)
     return _fallback_help_answer(query)
 
 
@@ -921,7 +924,8 @@ with tab_workflow:
                                 try:
                                     data = comfy.download_output(f)
                                     st.download_button(f"⬇️ {f}", data, file_name=f)
-                                except Exception:
+                                except Exception as ex:
+                                    logger.debug("Could not download output %s: %s", f, ex)
                                     st.info(f"Output generated: {f}")
                         else:
                             status.error("❌ Workflow execution failed")
